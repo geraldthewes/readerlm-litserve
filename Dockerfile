@@ -66,9 +66,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create non-root user for security
-RUN groupadd --gid 1000 appuser && \
-    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+# Create non-root user for security (handle existing GID/UID gracefully)
+RUN groupadd --gid 1000 appuser 2>/dev/null || true && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser 2>/dev/null || \
+    useradd --shell /bin/bash --create-home appuser
 
 # Set working directory
 WORKDIR /app
