@@ -1,5 +1,6 @@
 owner: gerald
 image_name: readerlm-litserve
+repo_url: git@github.com:geraldthewes/readerlm-litserve.git
 dockerfile_path: Dockerfile
 registry_url: registry.cluster:5000
 image_tags:
