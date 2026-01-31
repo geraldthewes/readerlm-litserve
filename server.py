@@ -19,12 +19,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration from environment variables with defaults
-MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/reader-lm-1.5b")
+MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/ReaderLM-v2")
 MODEL_REVISION = os.getenv("MODEL_REVISION", "main")
 MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "1024"))
-TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
+TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
 REPETITION_PENALTY = float(os.getenv("REPETITION_PENALTY", "1.08"))
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
+
+# HTML cleaning patterns for ReaderLM-v2
+SCRIPT_PATTERN = r"<[ ]*script.*?\/[ ]*script[ ]*>"
+STYLE_PATTERN = r"<[ ]*style.*?\/[ ]*style[ ]*>"
+META_PATTERN = r"<[ ]*meta.*?>"
+COMMENT_PATTERN = r"<[ ]*!--.*?--[ ]*>"
+LINK_PATTERN = r"<[ ]*link.*?>"
+
+
+def clean_html(html: str) -> str:
+    """Remove script, style, meta, comment, and link tags from HTML."""
+    html = re.sub(
+        SCRIPT_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+    html = re.sub(
+        STYLE_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+    html = re.sub(
+        META_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+    html = re.sub(
+        COMMENT_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+    html = re.sub(
+        LINK_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+    return html
 
 
 class ReaderLMAPI(ls.LitAPI):
@@ -105,20 +132,30 @@ class ReaderLMAPI(ls.LitAPI):
         """
         logger.info("Starting prediction")
 
+        # Clean HTML and prepare prompt for ReaderLM-v2
+        cleaned_html = clean_html(html_content)
+        instruction = (
+            "Extract the main content from the given HTML "
+            "and convert it to Markdown format."
+        )
+        prompt = f"{instruction}\n```html\n{cleaned_html}\n```"
+
         # Prepare the input for the model
-        messages = [{"role": "user", "content": html_content}]
-        input_text = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        messages = [{"role": "user", "content": prompt}]
+        input_text = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
         inputs = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
 
         logger.debug("Input tokens: %d", inputs.shape[1])
 
-        # Generate a response from the model
+        # Generate a response from the model (deterministic for ReaderLM-v2)
         with torch.no_grad():
             output = self.model.generate(
                 inputs,
                 max_new_tokens=MAX_NEW_TOKENS,
                 temperature=TEMPERATURE,
-                do_sample=True,
+                do_sample=False,
                 repetition_penalty=REPETITION_PENALTY,
             )
 

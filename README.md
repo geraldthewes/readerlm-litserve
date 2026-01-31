@@ -2,7 +2,7 @@
 
 [![Open In Studio](https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg)](https://lightning.ai/sitammeur/studios/readerlm-litserve)
 
-[Jina.ai](https://jina.ai/) has introduced [Reader-LM](https://huggingface.co/collections/jinaai/jina-reader-lm-670628bfe0d782685cb53416), specialized small language models inspired by "Jina Reader" designed for converting raw, noisy HTML from the open web into clean markdown. The resulting reader-lm models outperform larger LLMs in this specific task, offering a cost-effective and multilingual solution. This project demonstrates the use of the Reader-LM model for converting HTML content to Markdown content served using LitServe, an easy-to-use, flexible serving engine for AI models built on FastAPI.
+[Jina.ai](https://jina.ai/) has introduced [ReaderLM-v2](https://huggingface.co/jinaai/ReaderLM-v2), a specialized small language model inspired by "Jina Reader" designed for converting raw, noisy HTML from the open web into clean markdown. ReaderLM-v2 features improved markdown generation, supports longer contexts (512K tokens), and outperforms larger LLMs in this specific task, offering a cost-effective and multilingual solution. This project demonstrates the use of the ReaderLM-v2 model for converting HTML content to Markdown content served using LitServe, an easy-to-use, flexible serving engine for AI models built on FastAPI.
 
 ## Project Structure
 
@@ -61,10 +61,10 @@ The server and client can be configured using environment variables. Copy `.env.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MODEL_NAME` | `jinaai/reader-lm-1.5b` | Hugging Face model name or path |
+| `MODEL_NAME` | `jinaai/ReaderLM-v2` | Hugging Face model name or path |
 | `MODEL_REVISION` | `main` | Model revision (commit hash, tag, or branch) |
 | `MAX_NEW_TOKENS` | `1024` | Maximum tokens to generate |
-| `TEMPERATURE` | `0.7` | Sampling temperature |
+| `TEMPERATURE` | `0` | Sampling temperature (0 = deterministic) |
 | `REPETITION_PENALTY` | `1.08` | Penalty for repeated tokens |
 | `SERVER_PORT` | `8000` | Port to run the server on |
 
@@ -77,7 +77,7 @@ The server and client can be configured using environment variables. Copy `.env.
 
 ## Usage
 
-The project can be used to serve the Reader-LM model using LitServe. Here, the model is used to convert HTML content to Markdown content. This suggests potential applications in web scraping, content repurposing, and accessibility improvements.
+The project can be used to serve the ReaderLM-v2 model using LitServe. Here, the model is used to convert HTML content to Markdown content. This suggests potential applications in web scraping, content repurposing, and accessibility improvements.
 
 ## Contributing
 
