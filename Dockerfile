@@ -71,8 +71,9 @@ RUN groupadd --gid 1000 appuser 2>/dev/null || true && \
     useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser 2>/dev/null || \
     useradd --shell /bin/bash --create-home appuser
 
-# Set working directory
+# Set working directory and ensure appuser owns it
 WORKDIR /app
+RUN chown appuser:appuser /app
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
