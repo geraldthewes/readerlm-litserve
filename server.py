@@ -1,4 +1,5 @@
 # Import necessary libraries
+import asyncio
 import logging
 import os
 import re
@@ -6,9 +7,16 @@ import re
 import litserve as ls
 import torch
 from dotenv import load_dotenv
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from starlette.responses import Response
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from url_fetcher import (
+    FetchError,
+    SSRFBlockedError,
+    URLValidationError,
+    fetch_url,
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -211,4 +219,62 @@ if __name__ == "__main__":
 
     api = ReaderLMAPI()
     server = ls.LitServer(api, track_requests=True)
+
+    # Add Jina.ai-style GET endpoint for URL fetching
+    @server.app.get("/{url:path}")
+    async def fetch_and_convert(request: Request, url: str) -> Response:
+        """Fetch a URL and convert its HTML to Markdown (Jina.ai-style).
+
+        This endpoint mimics Jina.ai's reader API pattern, allowing users to
+        fetch and convert any URL to markdown by accessing /{url}.
+
+        Example: GET /https://example.com
+
+        Args:
+            request: FastAPI request object
+            url: The full URL to fetch and convert
+
+        Returns:
+            Response with markdown content
+
+        Raises:
+            HTTPException: Various HTTP errors based on failure type
+        """
+        # Validate URL format - ensure it starts with http:// or https://
+        if not url.startswith(("http://", "https://")):
+            logger.warning("Invalid URL format (missing scheme): %s", url)
+            raise HTTPException(
+                status_code=400,
+                detail="URL must start with http:// or https://"
+            )
+
+        logger.info("GET request for URL: %s", url)
+
+        # Fetch HTML content
+        try:
+            html_content = await fetch_url(url)
+        except URLValidationError as e:
+            logger.warning("URL validation failed: %s", e)
+            raise HTTPException(status_code=400, detail=str(e))
+        except SSRFBlockedError as e:
+            logger.warning("SSRF protection blocked request: %s", e)
+            raise HTTPException(status_code=403, detail=str(e))
+        except FetchError as e:
+            logger.error("Failed to fetch URL: %s", e)
+            raise HTTPException(status_code=502, detail=str(e))
+
+        # Run model inference in a thread to avoid blocking
+        try:
+            output = await asyncio.to_thread(api.predict, html_content)
+            response = api.encode_response(output)
+            return response
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Model inference failed: %s", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to convert HTML to markdown"
+            )
+
     server.run(port=SERVER_PORT)

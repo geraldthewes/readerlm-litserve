@@ -8,6 +8,9 @@ litserve>=0.2.16
 # HTTP client (for client.py)
 requests>=2.32.5
 
+# Async HTTP client (for URL fetching)
+httpx>=0.28.0
+
 # Terminal formatting
 rich>=14.3.0
 

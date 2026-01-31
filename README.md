@@ -9,12 +9,14 @@
 The project is structured as follows:
 
 - `server.py`: The file containing the main code for the web server.
+- `url_fetcher.py`: URL fetching module with SSRF protection for the GET endpoint.
 - `client.py`: The file containing the code for client-side requests.
 - `requirements.txt`: Python dependencies with pinned versions.
 - `.env.template`: Template for environment variable configuration.
 - `LICENSE`: The license file for the project.
 - `README.md`: The README file that contains information about the project.
 - `assets`: The folder containing screenshots for working on the application.
+- `tests/`: Unit tests for the project.
 - `.gitignore`: The file containing the list of files and directories to be ignored by Git.
 
 ## Tech Stack
@@ -75,7 +77,42 @@ The server and client can be configured using environment variables. Copy `.env.
 | `SERVER_URL` | `http://127.0.0.1:8000` | Base URL of the server |
 | `REQUEST_TIMEOUT` | `120` | Request timeout in seconds |
 
+### URL Fetching Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `URL_FETCH_TIMEOUT` | `30` | Timeout for fetching external URLs (seconds) |
+| `URL_FETCH_USER_AGENT` | `ReaderLM/1.0` | User-Agent header for URL requests |
+| `BLOCK_PRIVATE_IPS` | `true` | Enable SSRF protection (block private IPs) |
+| `ALLOWED_DOMAINS` | `` (empty=all) | Comma-separated domain allowlist |
+| `BLOCKED_DOMAINS` | `` (empty=none) | Comma-separated domain blocklist |
+
 ## API Reference
+
+### GET /{url}
+
+Fetches a URL and converts its HTML to Markdown ([Jina.ai](https://jina.ai/reader/)-style).
+
+This endpoint mimics Jina.ai's reader API pattern, allowing you to fetch and convert any webpage to markdown by simply prepending the server URL.
+
+**Examples:**
+```bash
+# Fetch and convert a webpage
+curl http://localhost:8000/https://example.com
+
+# Fetch a specific page
+curl http://localhost:8000/https://news.ycombinator.com/item?id=12345
+
+# URL-encoded (alternative)
+curl "http://localhost:8000/https%3A%2F%2Fexample.com"
+```
+
+**Responses:**
+- **200:** Returns plain markdown text with `Content-Type: text/markdown`
+- **400:** Invalid URL format (missing scheme, invalid URL)
+- **403:** URL blocked by SSRF protection (private IP, blocked domain)
+- **502:** Failed to fetch the URL (timeout, connection error, HTTP error)
+- **500:** Conversion failed (model inference error)
 
 ### POST /predict
 
