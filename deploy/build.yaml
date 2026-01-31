@@ -14,10 +14,10 @@ test:
   container_port: 8000
   commands:
     # Test 1: Verify health endpoint responds correctly
-    - "curl -sf http://${SERVICE_HOST}:${SERVICE_PORT}/health"
+    - "curl -sf http://$${SERVICE_HOST}:$${SERVICE_PORT}/health"
     # Test 2: Test HTML-to-markdown conversion with a simple POST
     - |
-      curl -sf -X POST http://${SERVICE_HOST}:${SERVICE_PORT}/predict \
+      curl -sf -X POST http://$${SERVICE_HOST}:$${SERVICE_PORT}/predict \
         -H "Content-Type: application/json" \
         -d '{"html_content": "<html><body><h1>Test</h1><p>Hello world</p></body></html>"}' \
         | grep -q "Test" && echo "POST /predict test passed"
