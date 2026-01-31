@@ -28,7 +28,45 @@ The project is structured as follows:
 
 ## Getting Started
 
-To get started with this project, follow the steps below:
+### Option 1: Docker (Recommended)
+
+The easiest way to run the service is using Docker with NVIDIA GPU support.
+
+**Prerequisites:**
+- Docker with NVIDIA Container Toolkit installed
+- NVIDIA GPU with CUDA support
+
+**Build and Run:**
+
+```bash
+# Build the Docker image
+docker build -t readerlm-litserve .
+
+# Run with GPU support
+docker run --gpus all -p 8000:8000 readerlm-litserve
+
+# Run with custom environment variables
+docker run --gpus all -p 8000:8000 \
+  -e MAX_NEW_TOKENS=2048 \
+  -e TEMPERATURE=0.1 \
+  readerlm-litserve
+```
+
+**Verify GPU is accessible:**
+```bash
+docker run --gpus all --rm readerlm-litserve nvidia-smi
+```
+
+**Test the endpoint:**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"html_content": "<html><body><h1>Test</h1></body></html>"}'
+```
+
+### Option 2: Local Development
+
+To run locally without Docker:
 
 1. Install dependencies:
    ```bash
