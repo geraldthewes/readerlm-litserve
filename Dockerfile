@@ -11,7 +11,7 @@
 # -----------------------------------------------------------------------------
 # Build stage: Install dependencies in a virtual environment
 # -----------------------------------------------------------------------------
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS builder
+FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -37,7 +37,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # -----------------------------------------------------------------------------
 # Runtime stage: Minimal image with application
 # -----------------------------------------------------------------------------
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS runtime
+FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS runtime
 
 # =============================================================================
 # Environment Variables
