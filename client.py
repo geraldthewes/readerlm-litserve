@@ -59,23 +59,7 @@ def test_server(html_content: str) -> None:
         print(f"Error: Request failed - {e}")
         sys.exit(1)
 
-    try:
-        data = response.json()
-    except requests.exceptions.JSONDecodeError as e:
-        logger.error("Failed to parse JSON response: %s", e)
-        print("Error: Server returned invalid JSON response")
-        sys.exit(1)
-
-    if "error" in data:
-        logger.warning("Server returned error: %s", data["error"])
-        print(f"Warning: {data['error']}")
-
-    if "response" not in data:
-        logger.error("Response missing 'response' field: %s", data)
-        print("Error: Server response missing expected 'response' field")
-        sys.exit(1)
-
-    markdown_content = data["response"]
+    markdown_content = response.text
     if not markdown_content:
         logger.warning("Server returned empty response")
         print("Warning: Server returned empty response")

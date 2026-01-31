@@ -75,6 +75,31 @@ The server and client can be configured using environment variables. Copy `.env.
 | `SERVER_URL` | `http://127.0.0.1:8000` | Base URL of the server |
 | `REQUEST_TIMEOUT` | `120` | Request timeout in seconds |
 
+## API Reference
+
+### POST /predict
+
+Converts HTML content to Markdown.
+
+**Request:**
+```json
+{
+  "html_content": "<html>...</html>"
+}
+```
+
+**Response:**
+- **Success (200):** Returns plain markdown text with `Content-Type: text/markdown`
+- **Bad Request (400):** Missing or invalid `html_content` field
+- **Server Error (500):** Failed to generate response
+
+**Example:**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"html_content": "<h1>Hello World</h1><p>This is a test.</p>"}'
+```
+
 ## Usage
 
 The project can be used to serve the ReaderLM-v2 model using LitServe. Here, the model is used to convert HTML content to Markdown content. This suggests potential applications in web scraping, content repurposing, and accessibility improvements.

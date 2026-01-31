@@ -6,6 +6,8 @@ import re
 import litserve as ls
 import torch
 from dotenv import load_dotenv
+from fastapi import HTTPException
+from starlette.responses import Response
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Load environment variables from .env file
@@ -99,7 +101,7 @@ class ReaderLMAPI(ls.LitAPI):
             The HTML content string
 
         Raises:
-            ValueError: If html_content is missing or invalid
+            HTTPException: If html_content is missing or invalid (status 400)
         """
         logger.debug("Decoding request")
 
@@ -107,15 +109,24 @@ class ReaderLMAPI(ls.LitAPI):
             html_content = request["html_content"]
         except KeyError:
             logger.error("Request missing required 'html_content' field")
-            raise ValueError("Request must contain 'html_content' field")
+            raise HTTPException(
+                status_code=400,
+                detail="Request must contain 'html_content' field"
+            )
 
         if not isinstance(html_content, str):
             logger.error("html_content is not a string: %s", type(html_content))
-            raise ValueError("'html_content' must be a string")
+            raise HTTPException(
+                status_code=400,
+                detail="'html_content' must be a string"
+            )
 
         if not html_content.strip():
             logger.error("html_content is empty")
-            raise ValueError("'html_content' cannot be empty")
+            raise HTTPException(
+                status_code=400,
+                detail="'html_content' cannot be empty"
+            )
 
         logger.info("Received HTML content of length: %d", len(html_content))
         return html_content
@@ -162,15 +173,18 @@ class ReaderLMAPI(ls.LitAPI):
         logger.info("Prediction completed, output tokens: %d", output.shape[1])
         return output
 
-    def encode_response(self, outputs: torch.Tensor) -> dict:
+    def encode_response(self, outputs: torch.Tensor) -> Response:
         """
-        Encodes the given results into a dictionary format.
+        Encodes the given results into a plain markdown response.
 
         Args:
             outputs: Generated tensor from the model
 
         Returns:
-            Dictionary with 'response' key containing the markdown text
+            Response with text/markdown content type
+
+        Raises:
+            HTTPException: If no response could be generated (status 500)
         """
         logger.debug("Encoding response")
 
@@ -180,11 +194,14 @@ class ReaderLMAPI(ls.LitAPI):
 
         if not matches:
             logger.warning("No assistant response found in model output")
-            return {"response": "", "error": "No response generated"}
+            raise HTTPException(
+                status_code=500,
+                detail="No response generated"
+            )
 
-        response = matches[0].strip()
-        logger.info("Response encoded, length: %d", len(response))
-        return {"response": response}
+        markdown_text = matches[0].strip()
+        logger.info("Response encoded, length: %d", len(markdown_text))
+        return Response(content=markdown_text, media_type="text/markdown")
 
 
 if __name__ == "__main__":
