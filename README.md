@@ -13,6 +13,11 @@ The project is structured as follows:
 - `client.py`: The file containing the code for client-side requests.
 - `requirements.txt`: Python dependencies with pinned versions.
 - `.env.template`: Template for environment variable configuration.
+- `Dockerfile`: Multi-stage Docker build with NVIDIA GPU support.
+- `Makefile`: Build and deployment targets for Nomad cluster.
+- `deploy/`: Nomad cluster deployment configuration.
+  - `build.yaml`: JobForge build configuration.
+  - `readerlm-litserve.nomad`: Nomad job specification.
 - `LICENSE`: The license file for the project.
 - `README.md`: The README file that contains information about the project.
 - `assets`: The folder containing screenshots for working on the application.
@@ -174,6 +179,73 @@ curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"html_content": "<h1>Hello World</h1><p>This is a test.</p>"}'
 ```
+
+## Nomad Cluster Deployment
+
+The service can be deployed to a Nomad cluster using JobForge for image building.
+
+### Prerequisites
+
+- Access to the Nomad cluster with GPU-capable nodes
+- JobForge CLI installed and configured
+- Git repository pushed to origin
+
+### Build and Deploy
+
+```bash
+# Build and push image to registry
+make build
+
+# Deploy to Nomad cluster
+make deploy
+
+# Restart to pick up new image
+make restart
+
+# Check status
+make status
+
+# View logs
+make logs
+```
+
+### Access URLs
+
+After deployment, the service is accessible via Fabio load balancer:
+
+- **POST endpoint:** `http://fabio:9999/readerlm/predict`
+- **GET endpoint:** `http://fabio:9999/readerlm/https://example.com`
+- **Health check:** `http://fabio:9999/readerlm/health`
+
+### Verification
+
+```bash
+# Check job status
+nomad job status readerlm-litserve
+
+# Check service registration
+consul catalog services | grep readerlm
+
+# Test health endpoint
+curl http://fabio:9999/readerlm/health
+
+# Test POST endpoint
+curl -X POST http://fabio:9999/readerlm/predict \
+  -H "Content-Type: application/json" \
+  -d '{"html_content": "<h1>Test</h1><p>Hello world</p>"}'
+
+# Test GET endpoint
+curl http://fabio:9999/readerlm/https://example.com
+```
+
+### Resource Configuration
+
+| Resource | Value |
+|----------|-------|
+| CPU | 2000 MHz (2 cores) |
+| Memory | 16384 MB (16 GB) |
+| GPU | Required (NVIDIA) |
+| Shared Memory | 2 GB |
 
 ## Usage
 
