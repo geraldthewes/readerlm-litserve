@@ -1,30 +1,91 @@
+import logging
+import os
+import sys
+
 import requests
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.markdown import Markdown
 
+# Load environment variables from .env file
+load_dotenv()
 
-def test_server(html_content):
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Configuration from environment variables with defaults
+SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:8000")
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "120"))
+
+
+def test_server(html_content: str) -> None:
     """
     Sends a POST request to the server with the given input html content and prints the server's response.
 
     Args:
-        html_content (str): The html content to be sent to the server for prediction.
+        html_content: The html content to be sent to the server for prediction.
 
-    Returns: None
+    Returns:
+        None
     """
-    # API endpoint URL for the server
-    url = "http://127.0.0.1:8000/predict"
-
-    # Send a POST request with the request payload
+    url = f"{SERVER_URL}/predict"
     payload = {"html_content": html_content}
-    response = requests.post(url, json=payload)
 
-    # Parse the response JSON data
-    data = response.json()
+    logger.info("Sending request to %s", url)
+    logger.debug("Payload size: %d bytes", len(html_content))
+
+    try:
+        response = requests.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+    except requests.exceptions.Timeout:
+        logger.error("Request timed out after %d seconds", REQUEST_TIMEOUT)
+        print(f"Error: Request timed out after {REQUEST_TIMEOUT} seconds")
+        sys.exit(1)
+    except requests.exceptions.ConnectionError:
+        logger.error("Failed to connect to server at %s", SERVER_URL)
+        print(f"Error: Could not connect to server at {SERVER_URL}")
+        print("Make sure the server is running: python server.py")
+        sys.exit(1)
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTP error: %s", e)
+        print(f"Error: Server returned error - {e}")
+        sys.exit(1)
+    except requests.exceptions.RequestException as e:
+        logger.error("Request failed: %s", e)
+        print(f"Error: Request failed - {e}")
+        sys.exit(1)
+
+    try:
+        data = response.json()
+    except requests.exceptions.JSONDecodeError as e:
+        logger.error("Failed to parse JSON response: %s", e)
+        print("Error: Server returned invalid JSON response")
+        sys.exit(1)
+
+    if "error" in data:
+        logger.warning("Server returned error: %s", data["error"])
+        print(f"Warning: {data['error']}")
+
+    if "response" not in data:
+        logger.error("Response missing 'response' field: %s", data)
+        print("Error: Server response missing expected 'response' field")
+        sys.exit(1)
+
+    markdown_content = data["response"]
+    if not markdown_content:
+        logger.warning("Server returned empty response")
+        print("Warning: Server returned empty response")
+        return
+
+    logger.info("Received response of length: %d", len(markdown_content))
 
     # Display the response in a formatted markdown format
     console = Console()
-    markdown = Markdown(data['response'])
+    markdown = Markdown(markdown_content)
     console.print(markdown)
 
 

@@ -1,0 +1,15 @@
+# Core ML dependencies
+torch>=2.9.0
+transformers>=5.0.0
+
+# Server framework
+litserve>=0.2.16
+
+# HTTP client (for client.py)
+requests>=2.32.5
+
+# Terminal formatting
+rich>=14.3.0
+
+# Environment configuration
+python-dotenv>=1.2.0

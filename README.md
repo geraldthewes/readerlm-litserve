@@ -10,6 +10,8 @@ The project is structured as follows:
 
 - `server.py`: The file containing the main code for the web server.
 - `client.py`: The file containing the code for client-side requests.
+- `requirements.txt`: Python dependencies with pinned versions.
+- `.env.template`: Template for environment variable configuration.
 - `LICENSE`: The license file for the project.
 - `README.md`: The README file that contains information about the project.
 - `assets`: The folder containing screenshots for working on the application.
@@ -26,12 +28,52 @@ The project is structured as follows:
 
 To get started with this project, follow the steps below:
 
-1. Run the server: `python server.py`
-2. Upon running the server successfully, you will see uvicorn running on port 8000.
-3. Open a new terminal window.
-4. Run the client: `python client.py`
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. (Optional) Configure environment variables:
+   ```bash
+   cp .env.template .env
+   # Edit .env to customize settings
+   ```
+
+3. Run the server:
+   ```bash
+   python server.py
+   ```
+
+4. Upon running the server successfully, you will see uvicorn running on port 8000.
+
+5. Open a new terminal window and run the client:
+   ```bash
+   python client.py
+   ```
 
 Now, you can see the model output based on the HTML content. The model will convert the HTML content to Markdown content.
+
+## Configuration
+
+The server and client can be configured using environment variables. Copy `.env.template` to `.env` and modify as needed.
+
+### Server Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_NAME` | `jinaai/reader-lm-1.5b` | Hugging Face model name or path |
+| `MODEL_REVISION` | `main` | Model revision (commit hash, tag, or branch) |
+| `MAX_NEW_TOKENS` | `1024` | Maximum tokens to generate |
+| `TEMPERATURE` | `0.7` | Sampling temperature |
+| `REPETITION_PENALTY` | `1.08` | Penalty for repeated tokens |
+| `SERVER_PORT` | `8000` | Port to run the server on |
+
+### Client Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_URL` | `http://127.0.0.1:8000` | Base URL of the server |
+| `REQUEST_TIMEOUT` | `120` | Request timeout in seconds |
 
 ## Usage
 
