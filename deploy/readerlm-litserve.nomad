@@ -5,8 +5,10 @@ job "readerlm-litserve" {
   group "readerlm-litserve" {
     count = 1
 
+    # Exclude dedicated GPU nodes (reserved for ollama, nemotron, llama-swap)
     constraint {
-      attribute = "${meta.gpu-capable}"
+      attribute = "${meta.gpu-dedicated}"
+      operator  = "!="
       value     = "true"
     }
 
@@ -27,6 +29,32 @@ job "readerlm-litserve" {
       }
     }
 
+    # Init task to fix volume permissions for appuser (UID 1000)
+    task "init-permissions" {
+      lifecycle {
+        hook    = "prestart"
+        sidecar = false
+      }
+
+      driver = "docker"
+
+      config {
+        image   = "busybox:latest"
+        command = "/bin/sh"
+        args    = ["-c", "mkdir -p /cache/hub && chown -R 1000:1000 /cache && chmod -R 755 /cache"]
+      }
+
+      volume_mount {
+        volume      = "huggingface_cache"
+        destination = "/cache"
+      }
+
+      resources {
+        cpu    = 100
+        memory = 64
+      }
+    }
+
     task "readerlm-litserve" {
       driver = "docker"
 
@@ -35,6 +63,7 @@ job "readerlm-litserve" {
         force_pull = true
         ports      = ["http"]
         runtime    = "nvidia"
+        privileged = true
         shm_size   = 2147483648
       }
 
