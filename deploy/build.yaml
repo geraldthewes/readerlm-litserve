@@ -13,7 +13,7 @@ test:
   health_timeout: 180
   container_port: 8000
   python_cwd: "tests"
-  python_command: "pip install requests && python test_api_integration.py"
+  python_command: "python-executor run --requirements requirements.txt --file test_api_integration.py"
   env:
     NVIDIA_VISIBLE_DEVICES: "all"
   resource_limits:
