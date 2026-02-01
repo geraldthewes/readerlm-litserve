@@ -38,8 +38,8 @@ def test_predict_endpoint():
     print("Predict endpoint test passed")
 
 
-if __name__ == "__main__":
-    print(f"Testing service at: {get_service_url()}")
-    test_health_endpoint()
-    test_predict_endpoint()
-    print("All tests passed!")
+# Run tests when module is imported or executed
+print(f"Testing service at: {get_service_url()}")
+test_health_endpoint()
+test_predict_endpoint()
+print("All tests passed!")
