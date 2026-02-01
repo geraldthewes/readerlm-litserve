@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/ReaderLM-v2")
 MODEL_REVISION = os.getenv("MODEL_REVISION", "main")
 MODEL_DTYPE = os.getenv("MODEL_DTYPE", "auto")  # auto, float16, bfloat16, float32
+# Attention implementation: eager, sdpa, flash_attention_2
+# Use "eager" for better compatibility with float16 on older GPUs
+ATTN_IMPLEMENTATION = os.getenv("ATTN_IMPLEMENTATION", "eager")
 MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "1024"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
 REPETITION_PENALTY = float(os.getenv("REPETITION_PENALTY", "1.08"))
@@ -91,7 +94,7 @@ class ReaderLMAPI(ls.LitAPI):
             "float32": torch.float32,
         }
         torch_dtype = dtype_map.get(MODEL_DTYPE, "auto")
-        logger.info("Configured dtype: %s", MODEL_DTYPE)
+        logger.info("Configured dtype: %s, attn_implementation: %s", MODEL_DTYPE, ATTN_IMPLEMENTATION)
 
         try:
             self.model = (
@@ -100,6 +103,7 @@ class ReaderLMAPI(ls.LitAPI):
                     revision=MODEL_REVISION,
                     trust_remote_code=True,
                     torch_dtype=torch_dtype,
+                    attn_implementation=ATTN_IMPLEMENTATION,
                 )
                 .eval()
                 .to(device)
