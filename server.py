@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Configuration from environment variables with defaults
 MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/ReaderLM-v2")
 MODEL_REVISION = os.getenv("MODEL_REVISION", "main")
+MODEL_DTYPE = os.getenv("MODEL_DTYPE", "auto")  # auto, float16, bfloat16, float32
 MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "1024"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
 REPETITION_PENALTY = float(os.getenv("REPETITION_PENALTY", "1.08"))
@@ -82,10 +83,23 @@ class ReaderLMAPI(ls.LitAPI):
         logger.info("Loading model: %s", MODEL_NAME)
         logger.info("Using device: %s", device)
 
+        # Determine torch dtype from configuration
+        dtype_map: dict[str, str | torch.dtype] = {
+            "auto": "auto",
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+            "float32": torch.float32,
+        }
+        torch_dtype = dtype_map.get(MODEL_DTYPE, "auto")
+        logger.info("Configured dtype: %s", MODEL_DTYPE)
+
         try:
             self.model = (
                 AutoModelForCausalLM.from_pretrained(  # nosec B615
-                    MODEL_NAME, revision=MODEL_REVISION, trust_remote_code=True
+                    MODEL_NAME,
+                    revision=MODEL_REVISION,
+                    trust_remote_code=True,
+                    torch_dtype=torch_dtype,
                 )
                 .eval()
                 .to(device)
@@ -93,7 +107,7 @@ class ReaderLMAPI(ls.LitAPI):
             self.tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
                 MODEL_NAME, revision=MODEL_REVISION, trust_remote_code=True
             )
-            logger.info("Model loaded successfully")
+            logger.info("Model loaded successfully with dtype: %s", self.model.dtype)
         except Exception as e:
             logger.exception("Failed to load model: %s", e)
             raise

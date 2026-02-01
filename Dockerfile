@@ -45,6 +45,7 @@ FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS runtime
 # =============================================================================
 # MODEL_NAME           - HuggingFace model path (default: jinaai/ReaderLM-v2)
 # MODEL_REVISION       - Model version/commit (default: main)
+# MODEL_DTYPE          - Model precision: auto, float16, bfloat16, float32 (default: auto)
 # MAX_NEW_TOKENS       - Maximum tokens to generate (default: 1024)
 # TEMPERATURE          - Sampling temperature, 0=deterministic (default: 0)
 # REPETITION_PENALTY   - Penalty for repeated tokens (default: 1.08)
@@ -91,6 +92,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set default environment variables for the application
 ENV MODEL_NAME="jinaai/ReaderLM-v2" \
     MODEL_REVISION="main" \
+    MODEL_DTYPE="auto" \
     MAX_NEW_TOKENS="1024" \
     TEMPERATURE="0" \
     REPETITION_PENALTY="1.08" \
