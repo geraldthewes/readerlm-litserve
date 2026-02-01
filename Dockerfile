@@ -18,7 +18,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Python 3.12 and pip
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN mkdir -p /var/cache/apt/archives/partial && \
+    apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
     python3.12-venv \
     python3-pip \
@@ -60,7 +61,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Python 3.12 runtime only (no pip needed in runtime)
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN mkdir -p /var/cache/apt/archives/partial && \
+    apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
