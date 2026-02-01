@@ -11,7 +11,7 @@
 # -----------------------------------------------------------------------------
 # Build stage: Install dependencies in a virtual environment
 # -----------------------------------------------------------------------------
-FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS builder
+FROM docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 AS builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -29,16 +29,18 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies (versions pinned in requirements.txt)
+# Install Python dependencies
+# First install PyTorch with CUDA 12.8 support, then other dependencies
 COPY requirements.txt /tmp/requirements.txt
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128 && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # -----------------------------------------------------------------------------
 # Runtime stage: Minimal image with application
 # -----------------------------------------------------------------------------
-FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS runtime
+FROM docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 AS runtime
 
 # =============================================================================
 # Environment Variables
