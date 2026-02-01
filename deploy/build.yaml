@@ -17,6 +17,7 @@ test:
   python_requirements: "requirements.txt"
   env:
     NVIDIA_VISIBLE_DEVICES: "all"
+    MODEL_DTYPE: "float16"
   resource_limits:
     cpu: "2000"
     memory: "16384"
