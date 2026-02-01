@@ -178,16 +178,16 @@ class ReaderLMAPI(ls.LitAPI):
         input_text = self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
-        inputs = self.tokenizer.encode(input_text, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(input_text, return_tensors="pt").to(self.device)
 
-        logger.debug("Input tokens: %d", inputs.shape[1])
+        logger.debug("Input tokens: %d", inputs.input_ids.shape[1])
 
         # Generate a response from the model (deterministic for ReaderLM-v2)
         with torch.no_grad():
             output = self.model.generate(
-                inputs,
+                input_ids=inputs.input_ids,
+                attention_mask=inputs.attention_mask,
                 max_new_tokens=MAX_NEW_TOKENS,
-                temperature=TEMPERATURE,
                 do_sample=False,
                 repetition_penalty=REPETITION_PENALTY,
             )
