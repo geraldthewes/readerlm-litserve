@@ -17,6 +17,12 @@ job "readerlm-litserve" {
       value     = "amd64"
     }
 
+    # Only schedule on nodes with dedicated HuggingFace cache storage
+    constraint {
+      attribute = "${meta.hf-cache-storage}"
+      value     = "true"
+    }
+
     volume "huggingface_cache" {
       type      = "host"
       source    = "huggingface-cache"
@@ -26,32 +32,6 @@ job "readerlm-litserve" {
     network {
       port "http" {
         to = 8000
-      }
-    }
-
-    # Init task to fix volume permissions for appuser (UID 1000)
-    task "init-permissions" {
-      lifecycle {
-        hook    = "prestart"
-        sidecar = false
-      }
-
-      driver = "docker"
-
-      config {
-        image   = "busybox:latest"
-        command = "/bin/sh"
-        args    = ["-c", "mkdir -p /cache/hub && chown -R 1000:1000 /cache && chmod -R 755 /cache"]
-      }
-
-      volume_mount {
-        volume      = "huggingface_cache"
-        destination = "/cache"
-      }
-
-      resources {
-        cpu    = 100
-        memory = 64
       }
     }
 

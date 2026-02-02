@@ -72,10 +72,9 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create non-root user for security (handle existing GID/UID gracefully)
-RUN groupadd --gid 1000 appuser 2>/dev/null || true && \
-    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser 2>/dev/null || \
-    useradd --shell /bin/bash --create-home appuser
+# Create non-root user with UID 1000 to match cluster volume permissions
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
 
 # Set working directory and ensure appuser owns it
 WORKDIR /app
