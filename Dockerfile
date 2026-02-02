@@ -73,7 +73,10 @@ RUN mkdir -p /var/cache/apt/archives/partial && \
     && apt-get clean
 
 # Create non-root user with UID 1000 to match cluster volume permissions
-RUN groupadd --gid 1000 appuser && \
+# Delete any existing user/group with UID/GID 1000, then create appuser
+RUN (getent group 1000 | cut -d: -f1 | xargs -r groupdel) 2>/dev/null || true && \
+    (getent passwd 1000 | cut -d: -f1 | xargs -r userdel) 2>/dev/null || true && \
+    groupadd --gid 1000 appuser && \
     useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
 
 # Set working directory and ensure appuser owns it
