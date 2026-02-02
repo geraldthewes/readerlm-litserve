@@ -23,6 +23,13 @@ job "readerlm-litserve" {
       value     = "true"
     }
 
+    # Require GPU compute capability 7.0+ (Volta/Turing) for CUDA 12.8
+    constraint {
+      attribute = "${meta.gpu_compute_capability}"
+      operator  = ">="
+      value     = "7.0"
+    }
+
     volume "huggingface_cache" {
       type      = "host"
       source    = "huggingface-cache"

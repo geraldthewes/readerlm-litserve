@@ -9,6 +9,7 @@ image_tags:
 
 test:
   gpu_required: true
+  gpu_compute_capability: "7.0"
   health_endpoint: /health
   health_timeout: 180
   container_port: 8000
