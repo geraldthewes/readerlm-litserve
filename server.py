@@ -1,9 +1,9 @@
 # Import necessary libraries
-import asyncio
 import logging
 import os
 import re
 
+import httpx
 import litserve as ls
 import torch
 from dotenv import load_dotenv
@@ -281,18 +281,31 @@ if __name__ == "__main__":
             logger.error("Failed to fetch URL: %s", e)
             raise HTTPException(status_code=502, detail=str(e))
 
-        # Run model inference in a thread to avoid blocking
+        # Route through LitServe's /predict endpoint internally
+        # This ensures the request goes through workers where setup() has been called
         try:
-            output = await asyncio.to_thread(api.predict, html_content)
-            response = api.encode_response(output)
-            return response
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Model inference failed: %s", e)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"http://localhost:{SERVER_PORT}/predict",
+                    json={"html_content": html_content},
+                    timeout=300.0,
+                )
+                return Response(
+                    content=response.content,
+                    status_code=response.status_code,
+                    media_type=response.headers.get("content-type", "text/markdown"),
+                )
+        except httpx.TimeoutException:
+            logger.error("Timeout during internal predict request for URL: %s", url)
+            raise HTTPException(
+                status_code=504,
+                detail="Request timed out during conversion",
+            )
+        except httpx.RequestError as e:
+            logger.exception("Internal predict request failed: %s", e)
             raise HTTPException(
                 status_code=500,
-                detail="Failed to convert HTML to markdown"
+                detail="Failed to convert HTML to markdown",
             )
 
     server.run(port=SERVER_PORT)
