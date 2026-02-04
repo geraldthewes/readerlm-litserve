@@ -61,6 +61,10 @@ job "readerlm-litserve" {
         QUANTIZATION_MODE      = "4bit"
         QUANTIZATION_TYPE      = "nf4"
         USE_DOUBLE_QUANT       = "true"
+        # Reduce max tokens to limit attention matrix size on 10GB GPU
+        MAX_INPUT_TOKENS       = "4000"
+        # Reduce memory fragmentation
+        PYTORCH_CUDA_ALLOC_CONF = "expandable_segments:True"
       }
 
       volume_mount {
