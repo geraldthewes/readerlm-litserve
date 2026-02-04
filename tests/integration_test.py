@@ -179,21 +179,40 @@ def test_ssrf_protection() -> TestResult:
     return TestResult("SSRF Protection", passed, message, time.time() - start)
 
 
-def test_url_fetch_httpbin() -> TestResult:
-    """Test URL fetching with httpbin.org (small page)."""
+def test_url_fetch_github() -> TestResult:
+    """Test URL fetching with GitHub (structured page)."""
     start = time.time()
     try:
         response = requests.get(
-            f"{SERVICE_URL}/https://httpbin.org/html",
+            f"{SERVICE_URL}/https://github.com/anthropics",
             timeout=120,
         )
-        # httpbin.org/html returns a Moby Dick excerpt
-        passed = response.status_code == 200 and len(response.text) > 100
+        # GitHub profile pages have structured content
+        passed = response.status_code == 200 and len(response.text) > 50
         message = f"Status: {response.status_code}, Length: {len(response.text)}"
     except Exception as e:
         passed = False
         message = str(e)
-    return TestResult("URL Fetch (httpbin.org)", passed, message, time.time() - start)
+    return TestResult("URL Fetch (github.com)", passed, message, time.time() - start)
+
+
+def test_url_fetch_wikipedia() -> TestResult:
+    """Test URL fetching with Wikipedia (large page, tests chunking)."""
+    start = time.time()
+    try:
+        response = requests.get(
+            f"{SERVICE_URL}/https://en.wikipedia.org/wiki/Markdown",
+            timeout=300,
+        )
+        # Wikipedia pages are large and should trigger chunking
+        # Chunked responses contain "---" separators
+        passed = response.status_code == 200 and len(response.text) > 100
+        has_chunks = "---" in response.text
+        message = f"Status: {response.status_code}, Length: {len(response.text)}, Chunked: {has_chunks}"
+    except Exception as e:
+        passed = False
+        message = str(e)
+    return TestResult("URL Fetch (wikipedia.org)", passed, message, time.time() - start)
 
 
 def test_complex_html_structure() -> TestResult:
@@ -256,7 +275,8 @@ def run_all_tests() -> list[TestResult]:
         test_url_fetch_example,
         test_url_invalid_format,
         test_ssrf_protection,
-        test_url_fetch_httpbin,
+        test_url_fetch_github,
+        test_url_fetch_wikipedia,
         test_complex_html_structure,
     ]
 
