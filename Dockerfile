@@ -58,6 +58,14 @@ FROM docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 AS runtime
 # BLOCK_PRIVATE_IPS    - Enable SSRF protection (default: true)
 # ALLOWED_DOMAINS      - Comma-separated domain allowlist (default: empty=all)
 # BLOCKED_DOMAINS      - Comma-separated domain blocklist (default: empty=none)
+#
+# VRAM Optimization:
+# QUANTIZATION_MODE    - Quantization: none, 4bit, 8bit (default: none)
+# QUANTIZATION_TYPE    - 4-bit type: nf4, fp4 (default: nf4)
+# USE_DOUBLE_QUANT     - Double quantization for 4-bit (default: true)
+# USE_READABILITY      - Extract main content with readability (default: true)
+# MAX_INPUT_TOKENS     - Max tokens per chunk (default: 8000)
+# ENABLE_CHUNKING      - Split large documents (default: true)
 # =============================================================================
 
 # Prevent interactive prompts
@@ -107,10 +115,16 @@ ENV MODEL_NAME="jinaai/ReaderLM-v2" \
     URL_FETCH_USER_AGENT="ReaderLM/1.0" \
     BLOCK_PRIVATE_IPS="true" \
     ALLOWED_DOMAINS="" \
-    BLOCKED_DOMAINS=""
+    BLOCKED_DOMAINS="" \
+    QUANTIZATION_MODE="none" \
+    QUANTIZATION_TYPE="nf4" \
+    USE_DOUBLE_QUANT="true" \
+    USE_READABILITY="true" \
+    MAX_INPUT_TOKENS="8000" \
+    ENABLE_CHUNKING="true"
 
 # Copy application code
-COPY --chown=appuser:appuser server.py url_fetcher.py ./
+COPY --chown=appuser:appuser server.py url_fetcher.py html_preprocessor.py ./
 
 # Switch to non-root user
 USER appuser

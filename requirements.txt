@@ -2,6 +2,14 @@
 torch>=2.9.0
 transformers>=5.0.0
 
+# Quantization support (VRAM optimization)
+bitsandbytes>=0.49.1
+accelerate>=1.12.0
+
+# HTML preprocessing (content extraction)
+readability-lxml>=0.8.4
+lxml>=5.0.0
+
 # Server framework
 litserve>=0.2.16
 

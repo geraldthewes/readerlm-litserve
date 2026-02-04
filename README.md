@@ -10,6 +10,7 @@ The project is structured as follows:
 
 - `server.py`: The file containing the main code for the web server.
 - `url_fetcher.py`: URL fetching module with SSRF protection for the GET endpoint.
+- `html_preprocessor.py`: HTML preprocessing module for content extraction and chunking.
 - `client.py`: The file containing the code for client-side requests.
 - `requirements.txt`: Python dependencies with pinned versions.
 - `.env.template`: Template for environment variable configuration.
@@ -30,6 +31,8 @@ The project is structured as follows:
 - PyTorch (for the deep learning framework)
 - Hugging Face Transformers Library (for the model)
 - LitServe (for the serving engine)
+- bitsandbytes (for 4-bit/8-bit quantization)
+- readability-lxml (for HTML content extraction)
 
 ## Getting Started
 
@@ -54,6 +57,11 @@ docker run --gpus all -p 8000:8000 readerlm-litserve
 docker run --gpus all -p 8000:8000 \
   -e MAX_NEW_TOKENS=2048 \
   -e TEMPERATURE=0.1 \
+  readerlm-litserve
+
+# Run with 4-bit quantization (for GPUs with ~10GB VRAM)
+docker run --gpus all -p 8000:8000 \
+  -e QUANTIZATION_MODE=4bit \
   readerlm-litserve
 ```
 
@@ -129,6 +137,27 @@ The server and client can be configured using environment variables. Copy `.env.
 | `BLOCK_PRIVATE_IPS` | `true` | Enable SSRF protection (block private IPs) |
 | `ALLOWED_DOMAINS` | `` (empty=all) | Comma-separated domain allowlist |
 | `BLOCKED_DOMAINS` | `` (empty=none) | Comma-separated domain blocklist |
+
+### VRAM Optimization Configuration
+
+These settings help run the model on GPUs with limited VRAM (e.g., 10GB).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `QUANTIZATION_MODE` | `none` | Quantization mode: `none`, `4bit`, `8bit` |
+| `QUANTIZATION_TYPE` | `nf4` | 4-bit quantization type: `nf4`, `fp4` |
+| `USE_DOUBLE_QUANT` | `true` | Enable double quantization (4-bit only) |
+| `USE_READABILITY` | `true` | Extract main content before inference |
+| `MAX_INPUT_TOKENS` | `8000` | Maximum tokens per chunk |
+| `ENABLE_CHUNKING` | `true` | Split large documents automatically |
+
+**VRAM Requirements by Mode:**
+
+| Configuration | Estimated VRAM |
+|---------------|----------------|
+| Full precision (default) | ~14-16 GB |
+| 8-bit quantization | ~7-8 GB |
+| 4-bit NF4 quantization | ~4-5 GB |
 
 ## API Reference
 

@@ -9,8 +9,9 @@ import torch
 from dotenv import load_dotenv
 from fastapi import HTTPException, Request
 from starlette.responses import Response
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+from html_preprocessor import preprocess_html
 from url_fetcher import (
     FetchError,
     SSRFBlockedError,
@@ -40,12 +41,54 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
 REPETITION_PENALTY = float(os.getenv("REPETITION_PENALTY", "1.08"))
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 
+# Quantization configuration (VRAM optimization)
+QUANTIZATION_MODE = os.getenv("QUANTIZATION_MODE", "none")  # none, 4bit, 8bit
+QUANTIZATION_TYPE = os.getenv("QUANTIZATION_TYPE", "nf4")  # nf4, fp4 (for 4bit only)
+USE_DOUBLE_QUANT = os.getenv("USE_DOUBLE_QUANT", "true").lower() == "true"
+
+# Preprocessing configuration
+USE_READABILITY = os.getenv("USE_READABILITY", "true").lower() == "true"
+MAX_INPUT_TOKENS = int(os.getenv("MAX_INPUT_TOKENS", "8000"))
+ENABLE_CHUNKING = os.getenv("ENABLE_CHUNKING", "true").lower() == "true"
+
 # HTML cleaning patterns for ReaderLM-v2
 SCRIPT_PATTERN = r"<[ ]*script.*?\/[ ]*script[ ]*>"
 STYLE_PATTERN = r"<[ ]*style.*?\/[ ]*style[ ]*>"
 META_PATTERN = r"<[ ]*meta.*?>"
 COMMENT_PATTERN = r"<[ ]*!--.*?--[ ]*>"
 LINK_PATTERN = r"<[ ]*link.*?>"
+
+
+def get_quantization_config() -> BitsAndBytesConfig | None:
+    """Create BitsAndBytesConfig based on environment variables.
+
+    Returns:
+        BitsAndBytesConfig for 4-bit or 8-bit quantization, or None if disabled.
+    """
+    if QUANTIZATION_MODE == "none":
+        return None
+
+    if QUANTIZATION_MODE == "4bit":
+        logger.info(
+            "Configuring 4-bit quantization: type=%s, double_quant=%s",
+            QUANTIZATION_TYPE,
+            USE_DOUBLE_QUANT,
+        )
+        return BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type=QUANTIZATION_TYPE,
+            bnb_4bit_use_double_quant=USE_DOUBLE_QUANT,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+
+    if QUANTIZATION_MODE == "8bit":
+        logger.info("Configuring 8-bit quantization")
+        return BitsAndBytesConfig(
+            load_in_8bit=True,
+        )
+
+    logger.warning("Unknown quantization mode '%s', disabling quantization", QUANTIZATION_MODE)
+    return None
 
 
 def clean_html(html: str) -> str:
@@ -96,18 +139,35 @@ class ReaderLMAPI(ls.LitAPI):
         torch_dtype = dtype_map.get(MODEL_DTYPE, "auto")
         logger.info("Configured dtype: %s, attn_implementation: %s", MODEL_DTYPE, ATTN_IMPLEMENTATION)
 
+        # Get quantization configuration
+        quantization_config = get_quantization_config()
+
         try:
-            self.model = (
-                AutoModelForCausalLM.from_pretrained(  # nosec B615
-                    MODEL_NAME,
-                    revision=MODEL_REVISION,
-                    trust_remote_code=True,
-                    torch_dtype=torch_dtype,
-                    attn_implementation=ATTN_IMPLEMENTATION,
+            model_kwargs: dict = {
+                "revision": MODEL_REVISION,
+                "trust_remote_code": True,
+                "torch_dtype": torch_dtype,
+                "attn_implementation": ATTN_IMPLEMENTATION,
+            }
+
+            if quantization_config:
+                # Quantization handles device placement automatically
+                model_kwargs["quantization_config"] = quantization_config
+                model_kwargs["device_map"] = "auto"
+                self.model = AutoModelForCausalLM.from_pretrained(  # nosec B615
+                    MODEL_NAME, **model_kwargs
+                ).eval()
+                logger.info("Model loaded with %s quantization", QUANTIZATION_MODE)
+            else:
+                # Standard loading with explicit device placement
+                self.model = (
+                    AutoModelForCausalLM.from_pretrained(  # nosec B615
+                        MODEL_NAME, **model_kwargs
+                    )
+                    .eval()
+                    .to(device)
                 )
-                .eval()
-                .to(device)
-            )
+
             self.tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
                 MODEL_NAME, revision=MODEL_REVISION, trust_remote_code=True
             )
@@ -157,7 +217,7 @@ class ReaderLMAPI(ls.LitAPI):
         logger.info("Received HTML content of length: %d", len(html_content))
         return html_content
 
-    def predict(self, html_content: str) -> torch.Tensor:
+    def predict(self, html_content: str) -> list[torch.Tensor]:
         """
         Generates a response based on the provided HTML content using the model.
 
@@ -165,46 +225,66 @@ class ReaderLMAPI(ls.LitAPI):
             html_content: The HTML content to convert to markdown
 
         Returns:
-            Generated token tensor from the model
+            List of generated token tensors from the model (one per chunk)
         """
         logger.info("Starting prediction")
 
-        # Clean HTML and prepare prompt for ReaderLM-v2
-        cleaned_html = clean_html(html_content)
-        instruction = (
-            "Extract the main content from the given HTML "
-            "and convert it to Markdown format."
+        # Preprocess HTML: extract main content and chunk if needed
+        html_chunks = preprocess_html(
+            html_content,
+            use_readability=USE_READABILITY,
+            max_tokens=MAX_INPUT_TOKENS,
+            enable_chunking=ENABLE_CHUNKING,
+            tokenizer=self.tokenizer,
         )
-        prompt = f"{instruction}\n```html\n{cleaned_html}\n```"
 
-        # Prepare the input for the model
-        messages = [{"role": "user", "content": prompt}]
-        input_text = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        inputs = self.tokenizer(input_text, return_tensors="pt").to(self.device)
+        logger.info("Processing %d chunk(s)", len(html_chunks))
 
-        logger.debug("Input tokens: %d", inputs.input_ids.shape[1])
+        outputs: list[torch.Tensor] = []
 
-        # Generate a response from the model (deterministic for ReaderLM-v2)
-        with torch.no_grad():
-            output = self.model.generate(
-                input_ids=inputs.input_ids,
-                attention_mask=inputs.attention_mask,
-                max_new_tokens=MAX_NEW_TOKENS,
-                do_sample=False,
-                repetition_penalty=REPETITION_PENALTY,
+        for i, chunk in enumerate(html_chunks):
+            logger.debug("Processing chunk %d/%d", i + 1, len(html_chunks))
+
+            # Apply basic HTML cleaning (regex-based) after preprocessing
+            cleaned_html = clean_html(chunk)
+
+            instruction = (
+                "Extract the main content from the given HTML "
+                "and convert it to Markdown format."
             )
+            prompt = f"{instruction}\n```html\n{cleaned_html}\n```"
 
-        logger.info("Prediction completed, output tokens: %d", output.shape[1])
-        return output
+            # Prepare the input for the model
+            messages = [{"role": "user", "content": prompt}]
+            input_text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            inputs = self.tokenizer(input_text, return_tensors="pt").to(self.device)
 
-    def encode_response(self, outputs: torch.Tensor) -> Response:
+            logger.debug("Chunk %d input tokens: %d", i + 1, inputs.input_ids.shape[1])
+
+            # Generate a response from the model (deterministic for ReaderLM-v2)
+            with torch.no_grad():
+                output = self.model.generate(
+                    input_ids=inputs.input_ids,
+                    attention_mask=inputs.attention_mask,
+                    max_new_tokens=MAX_NEW_TOKENS,
+                    do_sample=False,
+                    repetition_penalty=REPETITION_PENALTY,
+                )
+
+            logger.debug("Chunk %d output tokens: %d", i + 1, output.shape[1])
+            outputs.append(output)
+
+        logger.info("Prediction completed for %d chunk(s)", len(outputs))
+        return outputs
+
+    def encode_response(self, outputs: list[torch.Tensor]) -> Response:
         """
         Encodes the given results into a plain markdown response.
 
         Args:
-            outputs: Generated tensor from the model
+            outputs: List of generated tensors from the model (one per chunk)
 
         Returns:
             Response with text/markdown content type
@@ -212,21 +292,36 @@ class ReaderLMAPI(ls.LitAPI):
         Raises:
             HTTPException: If no response could be generated (status 500)
         """
-        logger.debug("Encoding response")
+        logger.debug("Encoding response for %d output(s)", len(outputs))
 
-        decoded_text = self.tokenizer.decode(outputs[0])
+        markdown_parts: list[str] = []
         pattern = r"<\|im_start\|>assistant(.*?)<\|im_end\|>"
-        matches = re.findall(pattern, decoded_text, re.DOTALL)
 
-        if not matches:
-            logger.warning("No assistant response found in model output")
+        for i, output in enumerate(outputs):
+            decoded_text = self.tokenizer.decode(output[0])
+            matches = re.findall(pattern, decoded_text, re.DOTALL)
+
+            if not matches:
+                logger.warning("No assistant response found in chunk %d output", i + 1)
+                continue
+
+            markdown_parts.append(matches[0].strip())
+
+        if not markdown_parts:
+            logger.warning("No assistant response found in any model output")
             raise HTTPException(
                 status_code=500,
                 detail="No response generated"
             )
 
-        markdown_text = matches[0].strip()
-        logger.info("Response encoded, length: %d", len(markdown_text))
+        # Join multiple chunks with separator
+        if len(markdown_parts) > 1:
+            markdown_text = "\n\n---\n\n".join(markdown_parts)
+            logger.info("Combined %d chunks into response, total length: %d", len(markdown_parts), len(markdown_text))
+        else:
+            markdown_text = markdown_parts[0]
+            logger.info("Response encoded, length: %d", len(markdown_text))
+
         return Response(content=markdown_text, media_type="text/markdown")
 
 
