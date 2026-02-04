@@ -57,6 +57,10 @@ job "readerlm-litserve" {
       env {
         NVIDIA_VISIBLE_DEVICES = "all"
         CUDA_DEVICE_ORDER      = "PCI_BUS_ID"
+        # VRAM optimization: 4-bit quantization reduces VRAM from ~14-16GB to ~4-5GB
+        QUANTIZATION_MODE      = "4bit"
+        QUANTIZATION_TYPE      = "nf4"
+        USE_DOUBLE_QUANT       = "true"
       }
 
       volume_mount {
