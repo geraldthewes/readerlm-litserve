@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration from environment variables with defaults
 SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:8000")
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "120"))
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 
 
 def test_server(html_content: str) -> None:

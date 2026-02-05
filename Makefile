@@ -21,7 +21,7 @@ logs:
 test: test-unit test-integration
 
 test-unit:
-	python -m pytest tests/test_html_preprocessor.py tests/test_quantization.py tests/test_url_fetcher.py -v
+	python -m pytest tests/test_html_extractor.py tests/test_url_fetcher.py -v
 
 test-integration:
 	python tests/integration_test.py
@@ -31,7 +31,7 @@ lint:
 	ruff check .
 
 typecheck:
-	mypy server.py html_preprocessor.py --ignore-missing-imports
+	mypy server.py html_extractor.py url_fetcher.py --ignore-missing-imports
 
 security-scan:
 	bandit -r . -x ./tests

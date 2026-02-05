@@ -1,12 +1,8 @@
-# Core ML dependencies
-torch>=2.9.0
-transformers>=5.0.0
+# HTML extraction (primary: trafilatura, fallback: readability + markdownify)
+trafilatura>=2.0.0
+markdownify>=1.2.2
 
-# Quantization support (VRAM optimization)
-bitsandbytes>=0.49.1
-accelerate>=1.12.0
-
-# HTML preprocessing (content extraction)
+# HTML content extraction (fallback tier)
 readability-lxml>=0.8.4
 lxml>=5.0.0
 

@@ -1,81 +1,57 @@
 # =============================================================================
-# ReaderLM LitServe Dockerfile
-# Multi-stage build with NVIDIA GPU support for HTML to Markdown conversion
+# HTML2Markdown LitServe Dockerfile
+# CPU-only multi-stage build for HTML to Markdown conversion
 # =============================================================================
 #
-# Build: docker build -t readerlm-litserve .
-# Run:   docker run --gpus all -p 8000:8000 readerlm-litserve
+# Build: docker build -t html2markdown-litserve .
+# Run:   docker run -p 8000:8000 html2markdown-litserve
 #
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # Build stage: Install dependencies in a virtual environment
 # -----------------------------------------------------------------------------
-FROM docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 AS builder
+FROM docker.io/python:3.12-slim AS builder
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Python 3.12 and pip
+# Install build dependencies for lxml
 # hadolint ignore=DL3008
-RUN mkdir -p /var/cache/apt/archives/partial && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
-    python3-pip \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libxml2-dev \
+    libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
-RUN python3.12 -m venv /opt/venv
+RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python dependencies
-# First install PyTorch with CUDA 12.8 support, then other dependencies
 COPY requirements.txt /tmp/requirements.txt
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128 && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # -----------------------------------------------------------------------------
 # Runtime stage: Minimal image with application
 # -----------------------------------------------------------------------------
-FROM docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 AS runtime
+FROM docker.io/python:3.12-slim AS runtime
 
 # =============================================================================
 # Environment Variables
 # =============================================================================
-# MODEL_NAME           - HuggingFace model path (default: jinaai/ReaderLM-v2)
-# MODEL_REVISION       - Model version/commit (default: main)
-# MODEL_DTYPE          - Model precision: auto, float16, bfloat16, float32 (default: auto)
-# ATTN_IMPLEMENTATION  - Attention implementation: eager, sdpa, flash_attention_2 (default: eager)
-# MAX_NEW_TOKENS       - Maximum tokens to generate (default: 1024)
-# TEMPERATURE          - Sampling temperature, 0=deterministic (default: 0)
-# REPETITION_PENALTY   - Penalty for repeated tokens (default: 1.08)
 # SERVER_PORT          - Server listen port (default: 8000)
 # URL_FETCH_TIMEOUT    - Timeout for URL fetching in seconds (default: 30)
 # URL_FETCH_USER_AGENT - User-Agent header for URL requests (default: ReaderLM/1.0)
 # BLOCK_PRIVATE_IPS    - Enable SSRF protection (default: true)
 # ALLOWED_DOMAINS      - Comma-separated domain allowlist (default: empty=all)
 # BLOCKED_DOMAINS      - Comma-separated domain blocklist (default: empty=none)
-#
-# VRAM Optimization:
-# QUANTIZATION_MODE    - Quantization: none, 4bit, 8bit (default: none)
-# QUANTIZATION_TYPE    - 4-bit type: nf4, fp4 (default: nf4)
-# USE_DOUBLE_QUANT     - Double quantization for 4-bit (default: true)
-# USE_READABILITY      - Extract main content with readability (default: true)
-# MAX_INPUT_TOKENS     - Max tokens per chunk (default: 8000)
-# ENABLE_CHUNKING      - Split large documents (default: true)
 # =============================================================================
 
-# Prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Python 3.12 runtime only (no pip needed in runtime)
+# Install runtime dependencies for lxml
 # hadolint ignore=DL3008
-RUN mkdir -p /var/cache/apt/archives/partial && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libxml2 \
+    libxslt1.1 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -103,28 +79,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONFAULTHANDLER=1
 
 # Set default environment variables for the application
-ENV MODEL_NAME="jinaai/ReaderLM-v2" \
-    MODEL_REVISION="main" \
-    MODEL_DTYPE="auto" \
-    ATTN_IMPLEMENTATION="eager" \
-    MAX_NEW_TOKENS="1024" \
-    TEMPERATURE="0" \
-    REPETITION_PENALTY="1.08" \
-    SERVER_PORT="8000" \
+ENV SERVER_PORT="8000" \
     URL_FETCH_TIMEOUT="30" \
     URL_FETCH_USER_AGENT="ReaderLM/1.0" \
     BLOCK_PRIVATE_IPS="true" \
     ALLOWED_DOMAINS="" \
-    BLOCKED_DOMAINS="" \
-    QUANTIZATION_MODE="none" \
-    QUANTIZATION_TYPE="nf4" \
-    USE_DOUBLE_QUANT="true" \
-    USE_READABILITY="true" \
-    MAX_INPUT_TOKENS="8000" \
-    ENABLE_CHUNKING="true"
+    BLOCKED_DOMAINS=""
 
 # Copy application code
-COPY --chown=appuser:appuser server.py url_fetcher.py html_preprocessor.py ./
+COPY --chown=appuser:appuser server.py url_fetcher.py html_extractor.py ./
 
 # Switch to non-root user
 USER appuser
@@ -133,8 +96,8 @@ USER appuser
 EXPOSE 8000
 
 # Health check - verify server is responding
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl --fail http://localhost:${SERVER_PORT}/health || exit 1
 
 # Run the server
-ENTRYPOINT ["python3.12", "server.py"]
+ENTRYPOINT ["python3", "server.py"]

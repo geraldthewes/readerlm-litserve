@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration tests for the ReaderLM-LitServe service.
+"""Integration tests for the HTML2Markdown LitServe service.
 
 These tests run against a deployed instance of the service.
 Configure the service URL via the READERLM_URL environment variable.
@@ -51,7 +51,7 @@ def test_basic_html_conversion() -> TestResult:
         response = requests.post(
             f"{SERVICE_URL}/predict",
             json={"html_content": html},
-            timeout=60,
+            timeout=30,
         )
         passed = response.status_code == 200 and "Hello World" in response.text
         message = f"Status: {response.status_code}, Length: {len(response.text)}"
@@ -82,7 +82,7 @@ def test_html_cleaning() -> TestResult:
         response = requests.post(
             f"{SERVICE_URL}/predict",
             json={"html_content": html},
-            timeout=60,
+            timeout=30,
         )
         passed = (
             response.status_code == 200
@@ -137,7 +137,7 @@ def test_url_fetch_example() -> TestResult:
     try:
         response = requests.get(
             f"{SERVICE_URL}/https://example.com",
-            timeout=120,
+            timeout=30,
         )
         passed = response.status_code == 200 and "Example Domain" in response.text
         message = f"Status: {response.status_code}, Contains 'Example Domain': {'Example Domain' in response.text}"
@@ -185,7 +185,7 @@ def test_url_fetch_github() -> TestResult:
     try:
         response = requests.get(
             f"{SERVICE_URL}/https://github.com/anthropics",
-            timeout=120,
+            timeout=30,
         )
         # GitHub profile pages have structured content
         passed = response.status_code == 200 and len(response.text) > 50
@@ -197,18 +197,15 @@ def test_url_fetch_github() -> TestResult:
 
 
 def test_url_fetch_wikipedia() -> TestResult:
-    """Test URL fetching with Wikipedia (large page, tests chunking)."""
+    """Test URL fetching with Wikipedia (large page)."""
     start = time.time()
     try:
         response = requests.get(
             f"{SERVICE_URL}/https://en.wikipedia.org/wiki/Markdown",
-            timeout=300,
+            timeout=60,
         )
-        # Wikipedia pages are large and should trigger chunking
-        # Chunked responses contain "---" separators
         passed = response.status_code == 200 and len(response.text) > 100
-        has_chunks = "---" in response.text
-        message = f"Status: {response.status_code}, Length: {len(response.text)}, Chunked: {has_chunks}"
+        message = f"Status: {response.status_code}, Length: {len(response.text)}"
     except Exception as e:
         passed = False
         message = str(e)
@@ -248,7 +245,7 @@ def test_complex_html_structure() -> TestResult:
         response = requests.post(
             f"{SERVICE_URL}/predict",
             json={"html_content": html},
-            timeout=60,
+            timeout=30,
         )
         text = response.text
         passed = (
@@ -285,7 +282,7 @@ def run_all_tests() -> list[TestResult]:
         print(f"Running: {test_func.__name__}...", end=" ", flush=True)
         result = test_func()
         results.append(result)
-        status = "✅ PASS" if result.passed else "❌ FAIL"
+        status = "PASS" if result.passed else "FAIL"
         print(f"{status} ({result.duration:.2f}s)")
 
     return results
@@ -304,7 +301,7 @@ def print_summary(results: list[TestResult]) -> bool:
     total_time = sum(r.duration for r in results)
 
     for result in results:
-        status = "✅" if result.passed else "❌"
+        status = "PASS" if result.passed else "FAIL"
         print(f"{status} {result.name}")
         print(f"   {result.message}")
 
@@ -320,7 +317,7 @@ def print_summary(results: list[TestResult]) -> bool:
 def main() -> int:
     """Main entry point."""
     print("=" * 60)
-    print("ReaderLM-LitServe Integration Tests")
+    print("HTML2Markdown LitServe Integration Tests")
     print("=" * 60)
     print(f"Target: {SERVICE_URL}")
     print()
