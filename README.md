@@ -139,6 +139,25 @@ curl -X POST http://localhost:8000/predict \
   -d '{"html_content": "<h1>Hello World</h1><p>This is a test.</p>"}'
 ```
 
+## CLI Tool
+
+A companion Go CLI tool `web_fetch` is available in the cluster-infrastructure repository at `tools/web_fetch/`. It wraps the GET endpoint for easy command-line use.
+
+```bash
+# Fetch a URL and print Markdown to stdout
+web_fetch https://example.com
+
+# Use a specific service URL
+web_fetch -u http://localhost:8000 https://example.com
+
+# Pipe a URL
+echo "https://example.com" | web_fetch
+```
+
+Service discovery priority: `--url` flag → `READERLM_URL` env → Consul KV (`services/readerlm-litserve/url`) → `http://fabio.service.consul:9999/readerlm`.
+
+Install with `make install` from `tools/web_fetch/`.
+
 ## Nomad Cluster Deployment
 
 ### Build and Deploy
