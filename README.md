@@ -141,7 +141,7 @@ curl -X POST http://localhost:8000/predict \
 
 ## CLI Tool
 
-A companion Go CLI tool `web_fetch` is available in the cluster-infrastructure repository at `tools/web_fetch/`. It wraps the GET endpoint for easy command-line use.
+A companion Go CLI tool `web_fetch` is available in `tools/web_fetch/`. It wraps the GET endpoint for easy command-line use.
 
 ```bash
 # Fetch a URL and print Markdown to stdout
