@@ -1,19 +1,45 @@
-;; web_fetch.el - Emacs Lisp interface to readerlm-litserve web service
-;; Provides a function to fetch URLs and convert to markdown using the readerlm-litserve service directly
+;;; web_fetch.el --- Emacs Lisp interface to readerlm-litserve web service  -*- lexical-binding: t; -*-
 
+;; Provides a function to fetch URLs and convert to markdown using the readerlm-litserve service directly
+;;
 ;; Requirements:
 ;; - readerlm-litserve service must be running and accessible
 ;; - Optional: plz package for HTTP calls (M-x package-install RET plz RET)
 ;;   If not available, uses built-in url-retrieve-synchronously
 
+;; Author: Gerald
+;; Version: 1.0
+;; Package-Requires: ((emacs "29.1") (cl-lib "1.0") (json "1.0"))
+;; Keywords: web, http, fetch
+;; URL: https://github.com/geraldthewes/readerlm-litserve
+
+;;; Commentary:
+;; This package provides a simple interface to the readerlm-litserve web service
+;; for fetching URLs and converting their content to markdown format.
+;;
+;; The package offers two main functions:
+;; - `web-fetch`: Tries to use plz if available, falls back to url-retrieve-synchronously
+;; - `web-fetch-plz`: Uses plz exclusively for HTTP requests
+;;
+;; Both functions take a URL and optional timeout, returning the markdown content
+;; or signaling a web-fetch-error on failure.
+;;
+;; To use with gptel, see the tool definition at the end of this file.
+
+;;; Code:
+
 (require 'json)
 
+;; Declare plz function for byte-compiler
+(eval-when-compile
+  (declare-function plz "plz" (method &rest args)))
+
 (defcustom web-fetch-service-url "http://fabio:9999/readerlm/"
-  "Base URL of the readerlm-litserve service.
-This should be the URL where the service is accessible, e.g., via Fabio load balancer.
-The service expects to receive URLs to fetch at its root path (it has a Jina.ai-style endpoint)."
-  :type 'string
-  :group 'web-fetch)
+   "Base URL of the readerlm-litserve service.
+Should be accessible URL where service runs (e.g., via Fabio).
+Service expects URLs at root path (Jina.ai-style endpoint)."
+   :type 'string
+   :group 'web-fetch)
 
 (defun web-fetch (url &optional timeout)
   "Fetch URL and return content as Markdown using the readerlm-litserve service.
@@ -33,40 +59,42 @@ GET {service-url}/{url-to-fetch}"
          (error nil)
          (result nil))
     
-    ;; Try to use plz if available, otherwise fall back to built-in
-    (condition-case err
-        (progn
-          ;; Check if plz is available
-          (when (and (featurep 'plz) (fboundp 'plz))
-            ;; Use plz for HTTP request (more modern interface)
-            (let ((response (plz 'get request-url
-                                 :timeout timeout
-                                 :as 'string)))
-              (if (plist-get response :status-code)
-                  (if (= 200 (plist-get response :status-code))
-                      (setq result (plist-get response :body))
-                    (setq error (format "Service returned HTTP %d: %s"
-                                        (plist-get response :status-code)
-                                        (plist-get response :body))))
-                (setq error (format "Invalid response from plz: %S" response)))))
-          ;; Fall back to built-in url-retrieve-synchronously
-          (unless (or result error)
-            (let ((status-code 0)
-                  (headers nil))
-              (url-retrieve-synchronously
-               request-url
-               ;; Callback function
-               (lambda (status)
-                 (setq status-code status)
-                 (when (or (not (eq status 200))
-                           (not (buffer-string)))
-                   (setq error (format "URL retrieve failed with status %d" status)))))
-              (unless error
-                (setq result (buffer-string)))
-              (when (and (not error) (/= status-code 200))
-                (setq error (format "Service returned HTTP %d" status-code)))))))
-      ;; Handle errors
-      (error (setq error (format "Error fetching URL: %s" (error-message-string err)))))
+     ;; Try to use plz if available, otherwise fall back to built-in
+     (let ((fetch-error nil))
+       (condition-case err
+           (progn
+             ;; Check if plz is available
+             (when (and (featurep 'plz) (fboundp 'plz))
+               ;; Use plz for HTTP request (more modern interface)
+               (let ((response (plz 'get request-url
+                                    :timeout timeout
+                                    :as 'string)))
+                 (if (plist-get response :status-code)
+                     (if (= 200 (plist-get response :status-code))
+                         (setq result (plist-get response :body))
+                       (setq error (format "Service returned HTTP %d: %s"
+                                           (plist-get response :status-code)
+                                           (plist-get response :body))))
+                   (setq error (format "Invalid response from plz: %S" response)))))
+             ;; Fall back to built-in url-retrieve-synchronously
+             (unless (or result error)
+               (let ((status-code 0))
+                 (url-retrieve-synchronously
+                  request-url
+                  ;; Callback function
+                  (lambda (status)
+                    (setq status-code status)
+                    (when (or (not (eq status 200))
+                              (not (buffer-string)))
+                      (setq error (format "URL retrieve failed with status %d" status)))))
+               (unless error
+                 (setq result (buffer-string)))
+               (when (and (not error) (/= status-code 200))
+                 (setq error (format "Service returned HTTP %d" status-code))))))
+         (error (setq fetch-error err)))
+       ;; Handle errors
+       (when fetch-error
+         (setq error (format "Error fetching URL: %s" (error-message-string fetch-error)))))
     
     ;; Return result or signal error
     (if error
@@ -124,4 +152,5 @@ Returns the markdown content as a string, or signals an error on failure."
 ;; Define a custom error type for web-fetch
 (define-error 'web-fetch-error "Web fetch failed" nil)
 
-(provide 'web-fetch)
+(provide 'web_fetch)
+;;; web_fetch.el ends here

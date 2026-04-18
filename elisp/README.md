@@ -19,13 +19,13 @@ This package provides Emacs Lisp functions to fetch URLs and convert their conte
 
 1. Copy `web_fetch.el` to your Emacs lisp directory (e.g., `~/.emacs.d/lisp/`)
 2. Add the directory to your `load-path` if not already there:
-   ```elisp
-   (add-to-list 'load-path "~/.emacs.d/lisp/")
-   ```
+    ```elisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/")
+    ```
 3. Require the package:
-   ```elisp
-   (require 'web-fetch)
-   ```
+    ```elisp
+    (require 'web_fetch)
+    ```
 
 ## Usage
 
@@ -65,7 +65,7 @@ This package is designed to work seamlessly with [gptel](https://github.com/numk
 
 ### Basic Setup
 
-Add the following to your Emacs configuration (after requiring web-fetch):
+Add the following to your Emacs configuration (after requiring web_fetch):
 
 ```elisp
 ;; Optional: Use plz for HTTP calls (recommended) or use built-in url-retrieve-synchronously
