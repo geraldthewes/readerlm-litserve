@@ -28,7 +28,7 @@ test-integration:
 
 test-elisp:
 	cd elisp && emacs --batch -l ert -l ./simple-test.el -f ert-run-tests-batch-and-exit
-	cd elisp && emacs --batch -l ert -l ./test-web-fetch-simple.el -f ert-run-tests-batch-and-exit
+	cd elisp && emacs --batch -l ert -l ./test-web-fetch.el -f ert-run-tests-batch-and-exit
 
 # Code quality
 lint:
