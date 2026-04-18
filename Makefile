@@ -18,13 +18,17 @@ logs:
 	nomad alloc logs -job readerlm-litserve
 
 # Testing
-test: test-unit test-integration
+test: test-unit test-integration test-elisp
 
 test-unit:
 	python -m pytest tests/test_html_extractor.py tests/test_url_fetcher.py -v
 
 test-integration:
 	python tests/integration_test.py
+
+test-elisp:
+	cd elisp && emacs --batch -l ert -l ./simple-test.el -f ert-run-tests-batch-and-exit
+	cd elisp && emacs --batch -l ert -l ./test-web-fetch-simple.el -f ert-run-tests-batch-and-exit
 
 # Code quality
 lint:
