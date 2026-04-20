@@ -34,7 +34,7 @@
 (eval-when-compile
   (declare-function plz "plz" (method &rest args)))
 
-(defcustom web-fetch-service-url "http://fabio:9999/readerlm/"
+(defcustom web-fetch-service-url "http://fabio.service.consul:9999/readerlm/"
    "Base URL of the readerlm-litserve service.
 Should be accessible URL where service runs (e.g., via Fabio).
 Service expects URLs at root path (Jina.ai-style endpoint)."

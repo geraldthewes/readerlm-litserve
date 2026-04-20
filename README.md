@@ -183,9 +183,9 @@ make logs
 
 After deployment, the service is accessible via Fabio load balancer:
 
-- **POST endpoint:** `http://fabio:9999/readerlm/predict`
-- **GET endpoint:** `http://fabio:9999/readerlm/https://example.com`
-- **Health check:** `http://fabio:9999/readerlm/health`
+- **POST endpoint:** `http://fabio.service.consul:9999/readerlm/predict`
+- **GET endpoint:** `http://fabio.service.consul:9999/readerlm/https://example.com`
+- **Health check:** `http://fabio.service.consul:9999/readerlm/health`
 
 ### Resource Requirements
 

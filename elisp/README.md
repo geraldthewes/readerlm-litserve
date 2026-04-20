@@ -7,15 +7,30 @@ This package provides Emacs Lisp functions to fetch URLs and convert their conte
 ### Prerequisites
 
 1. **readerlm-litserve service**: Must be running and accessible
-   - Deploy using: `make deploy` from the readerlm-litserve project root
-   - Service accessible via Fabio: `http://fabio:9999/readerlm/`
-   - The service provides a Jina.ai-style endpoint that fetches URLs and converts them to Markdown
+    - Deploy using: `make deploy` from the readerlm-litserve project root
+    - Service accessible via Fabio: `http://fabio.service.consul:9999/readerlm/`
+    - The service provides a Jina.ai-style endpoint that fetches URLs and converts them to Markdown
 
 2. **Optional HTTP client**: 
-   - The package can use either Emacs' built-in `url-retrieve-synchronously` or the `plz` package
-   - For better functionality, install plz: `M-x package-install RET plz RET`
+    - The package can use either Emacs' built-in `url-retrieve-synchronously` or the `plz` package
+    - For better functionality, install plz: `M-x package-install RET plz RET`
 
-### Manual Installation
+### Installation Methods
+
+#### Method 1: Using Makefile (Recommended)
+
+Run the following command from the project root:
+```bash
+make emacs-install
+```
+
+This will install the package to your Emacs ELPA directory (`~/.emacs.d/elpa/web_fetch/`). Then add to your init.el:
+```elisp
+(add-to-list 'load-path "~/.emacs.d/elpa/web_fetch/")
+(require 'web_fetch)
+```
+
+#### Method 2: Manual Installation
 
 1. Copy `web_fetch.el` to your Emacs lisp directory (e.g., `~/.emacs.d/lisp/`)
 2. Add the directory to your `load-path` if not already there:
@@ -161,7 +176,7 @@ The Emacs Lisp functions make direct HTTP requests to the readerlm-litserve serv
 
 ### Connection refused or service unavailable
 - Verify the readerlm-litserve service is running: `make status` in the readerlm-litserve project
-- Check service accessibility: `curl http://fabio:9999/readerlm/` should return service info
+- Check service accessibility: `curl http://fabio.service.consul:9999/readerlm/` should return service info
 - Ensure proper network connectivity to the service cluster
 - Verify the `web-fetch-service-url` variable is set correctly
 
